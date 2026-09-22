@@ -39,6 +39,7 @@ async def to_thread(function, *args):
 
 class PrepareRequest(BaseModel):
     source: str
+    cache_key: str | None = None
 
 
 def validate_source(source: str) -> None:
@@ -49,8 +50,9 @@ def validate_source(source: str) -> None:
         raise HTTPException(403, "Media host is not allowed")
 
 
-def storyboard_id(source: str) -> str:
-    return hashlib.sha256(source.encode()).hexdigest()[:32]
+def storyboard_id(source: str, cache_key: str | None = None) -> str:
+    stable_value = cache_key.strip() if cache_key and cache_key.strip() else source
+    return hashlib.sha256(stable_value.encode()).hexdigest()[:32]
 
 
 def manifest_path(item_id: str) -> Path:
@@ -154,7 +156,7 @@ async def generate_storyboard(item_id: str, source: str) -> None:
 @app.post("/prepare")
 async def prepare(request: PrepareRequest):
     validate_source(request.source)
-    item_id = storyboard_id(request.source)
+    item_id = storyboard_id(request.source, request.cache_key)
     status = read_status(item_id)
     if status["ready"]:
         touch_storyboard(item_id)
