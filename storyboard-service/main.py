@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import json
@@ -28,6 +30,11 @@ CACHE_ROOT.mkdir(parents=True, exist_ok=True)
 
 jobs: dict[str, asyncio.Task] = {}
 semaphore = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
+
+
+async def to_thread(function, *args):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, lambda: function(*args))
 
 
 class PrepareRequest(BaseModel):
@@ -88,7 +95,7 @@ def cleanup_cache() -> None:
 
 async def cleanup_loop() -> None:
     while True:
-        await asyncio.to_thread(cleanup_cache)
+        await to_thread(cleanup_cache)
         await asyncio.sleep(6 * 60 * 60)
 
 
@@ -113,12 +120,12 @@ async def generate_storyboard(item_id: str, source: str) -> None:
                 return
             shutil.rmtree(temp, ignore_errors=True)
             temp.mkdir(parents=True)
-            duration_raw = await asyncio.to_thread(
+            duration_raw = await to_thread(
                 run_checked,
                 ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", source],
             )
             duration = max(0.0, float(duration_raw))
-            await asyncio.to_thread(
+            await to_thread(
                 run_checked,
                 [
                     "ffmpeg", "-hide_banner", "-loglevel", "error", "-i", source,
