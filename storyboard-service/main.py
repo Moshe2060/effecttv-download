@@ -62,9 +62,19 @@ def manifest_path(item_id: str) -> Path:
 
 def read_status(item_id: str) -> dict:
     path = manifest_path(item_id)
-    if not path.exists():
-        return {"id": item_id, "ready": False, "interval_ms": INTERVAL_SECONDS * 1000, "frame_count": 0}
-    return json.loads(path.read_text())
+    if path.exists():
+        return json.loads(path.read_text())
+
+    # Expose frames progressively while FFmpeg is still generating them.
+    working = CACHE_ROOT / f"{item_id}.working"
+    frame_count = len(list(working.glob("*.jpg"))) if working.is_dir() else 0
+    return {
+        "id": item_id,
+        "ready": frame_count > 0,
+        "complete": False,
+        "interval_ms": INTERVAL_SECONDS * 1000,
+        "frame_count": frame_count,
+    }
 
 
 def touch_storyboard(item_id: str) -> None:
@@ -179,6 +189,8 @@ async def frame(item_id: str, filename: str):
     if len(item_id) != 32 or not filename.endswith(".jpg") or not filename[:-4].isdigit():
         raise HTTPException(400, "Invalid frame path")
     path = CACHE_ROOT / item_id / filename
+    if not path.exists():
+        path = CACHE_ROOT / f"{item_id}.working" / filename
     if not path.exists():
         raise HTTPException(404, "Frame not ready")
     touch_storyboard(item_id)
