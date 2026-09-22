@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
+from typing import Optional
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException
@@ -39,7 +40,7 @@ async def to_thread(function, *args):
 
 class PrepareRequest(BaseModel):
     source: str
-    cache_key: str | None = None
+    cache_key: Optional[str] = None
 
 
 def validate_source(source: str) -> None:
@@ -50,7 +51,7 @@ def validate_source(source: str) -> None:
         raise HTTPException(403, "Media host is not allowed")
 
 
-def storyboard_id(source: str, cache_key: str | None = None) -> str:
+def storyboard_id(source: str, cache_key: Optional[str] = None) -> str:
     stable_value = cache_key.strip() if cache_key and cache_key.strip() else source
     return hashlib.sha256(stable_value.encode()).hexdigest()[:32]
 
