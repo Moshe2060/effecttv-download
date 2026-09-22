@@ -30,6 +30,8 @@ ALLOWED_HOSTS = {
 CACHE_ROOT.mkdir(parents=True, exist_ok=True)
 
 jobs: dict[str, asyncio.Task] = {}
+frame_jobs: dict[str, asyncio.Task] = {}
+sources: dict[str, str] = {}
 semaphore = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
 
 
@@ -168,12 +170,17 @@ async def generate_storyboard(item_id: str, source: str) -> None:
 async def prepare(request: PrepareRequest):
     validate_source(request.source)
     item_id = storyboard_id(request.source, request.cache_key)
+    sources[item_id] = request.source
+
+    target = CACHE_ROOT / item_id
+    target.mkdir(parents=True, exist_ok=True)
+    touch_storyboard(item_id)
+
     status = read_status(item_id)
-    if status["ready"]:
-        touch_storyboard(item_id)
-        return status
-    if item_id not in jobs:
-        jobs[item_id] = asyncio.create_task(generate_storyboard(item_id, request.source))
+    # A frame can be requested immediately. It is generated on demand instead
+    # of waiting for a full-video scan.
+    status["ready"] = True
+    status["complete"] = manifest_path(item_id).exists()
     return status
 
 
@@ -184,14 +191,68 @@ async def status(item_id: str):
     return read_status(item_id)
 
 
+async def generate_single_frame(item_id: str, filename: str, source: str) -> Path:
+    target_dir = CACHE_ROOT / item_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / filename
+    if target.exists():
+        return target
+
+    frame_number = int(filename[:-4])
+    position_seconds = max(0, frame_number - 1) * INTERVAL_SECONDS
+    temporary = target_dir / f".{filename}.tmp.jpg"
+
+    async with semaphore:
+        if target.exists():
+            return target
+        try:
+            await to_thread(
+                run_checked,
+                [
+                    "ffmpeg", "-hide_banner", "-loglevel", "error",
+                    "-ss", str(position_seconds),
+                    "-i", source,
+                    "-frames:v", "1",
+                    "-vf", "scale=320:-2",
+                    "-q:v", "5",
+                    "-y", str(temporary),
+                ],
+            )
+            if not temporary.exists() or temporary.stat().st_size == 0:
+                raise RuntimeError("FFmpeg did not create a preview frame")
+            temporary.replace(target)
+            return target
+        finally:
+            if temporary.exists():
+                temporary.unlink()
+
+
 @app.get("/files/{item_id}/{filename}")
 async def frame(item_id: str, filename: str):
     if len(item_id) != 32 or not filename.endswith(".jpg") or not filename[:-4].isdigit():
         raise HTTPException(400, "Invalid frame path")
     path = CACHE_ROOT / item_id / filename
     if not path.exists():
-        path = CACHE_ROOT / f"{item_id}.working" / filename
-    if not path.exists():
-        raise HTTPException(404, "Frame not ready")
+        working_path = CACHE_ROOT / f"{item_id}.working" / filename
+        if working_path.exists():
+            path = working_path
+        else:
+            source = sources.get(item_id)
+            if not source:
+                raise HTTPException(404, "Playback source is not registered")
+
+            job_key = f"{item_id}:{filename}"
+            task = frame_jobs.get(job_key)
+            if task is None:
+                task = asyncio.create_task(generate_single_frame(item_id, filename, source))
+                frame_jobs[job_key] = task
+            try:
+                path = await task
+            except Exception as exc:
+                raise HTTPException(503, f"Preview frame unavailable: {str(exc)[-300:]}")
+            finally:
+                if frame_jobs.get(job_key) is task:
+                    frame_jobs.pop(job_key, None)
+
     touch_storyboard(item_id)
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=2592000, immutable"})
