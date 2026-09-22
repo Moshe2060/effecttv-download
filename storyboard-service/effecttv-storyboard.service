@@ -1,0 +1,20 @@
+[Unit]
+Description=EffectTV Storyboard Service
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/effecttv-storyboard
+Environment=STORYBOARD_CACHE=/var/cache/effecttv-storyboards
+Environment=STORYBOARD_ALLOWED_HOSTS=effecttv.org,www.effecttv.org
+Environment=STORYBOARD_INTERVAL_SECONDS=10
+Environment=STORYBOARD_MAX_JOBS=1
+Environment=STORYBOARD_RETENTION_DAYS=30
+Environment=STORYBOARD_MAX_CACHE_GB=50
+ExecStart=/opt/effecttv-storyboard/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8093
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target
