@@ -1,7 +1,7 @@
 {
-  "versionCode": 150,
-  "versionName": "1.0.150-beta",
+  "versionCode": 151,
+  "versionName": "1.0.151-beta",
   "apkUrl": "https://raw.githubusercontent.com/Moshe2060/effecttv-download/main/EffectTV.apk",
-  "sha256": "2cb5d3bb00bf68a1be0cf920f1897f63c3687a8df085f9f211bd6516dbb0cfb6",
-  "notes": "• כרטיסי הסרטים והסדרות הרגילים במסך הבית הוקטנו כדי להציג יותר תוכן.\n• כרטיסי \"עשרת הסרטים הנצפים ביותר\" הוגדלו והודגשו."
+  "sha256": "56c15c2363c7fd509f6b0363ac02f5cff02263634a24483066bf2629038bfd12",
+  "notes": "• צומצמו הרווחים האופקיים בין הכרטיסים במסך הבית.\n• צומצם השטח הריק בין שורות הסרטים והסדרות.\n• התמונות והטקסט נשארו באותו גודל לקריאות טובה בטלוויזיה."
 }
