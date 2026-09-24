@@ -1,1 +1,7 @@
-{"versionCode":146,"versionName":"1.0.146-beta","apkUrl":"https://raw.githubusercontent.com/Moshe2060/effecttv-download/main/EffectTV.apk","sha256":"967f6b56144e24a4cee2c90444e5899c857295de38fb0e379af445c72dca7d03","notes":"גרסה חדשה של EffectTV זמינה להורדה ולהתקנה."}
+{
+  "versionCode": 147,
+  "versionName": "1.0.147-beta",
+  "apkUrl": "https://raw.githubusercontent.com/Moshe2060/effecttv-download/main/EffectTV.apk",
+  "sha256": "0230d313776e4ea8b16b202c7f9aaf478a2e537eca44ecffb18156c77b12a9a8",
+  "notes": "• נוסף פירוט \"מה חדש\" לכל גרסה חדשה.\n• חלון העדכון מציג את רשימת השינויים לפני ההורדה.\n• רשימת השינויים מתפרסמת אוטומטית יחד עם קובץ ההתקנה."
+}
